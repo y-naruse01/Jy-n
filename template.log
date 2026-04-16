@@ -1,0 +1,32 @@
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.1.17)  16 APR 2026 16:00
+entering extended mode
+ \write18 enabled.
+ %&-line parsing enabled.
+**template.tex
+(./template.tex
+LaTeX2e <2023-11-01> patch level 1
+L3 programming layer <2024-01-22>
+(./ieicej.cls
+Document Class: ieicej 2023/11/21 v3.4a for Transactions of IEICE
+\@JQ=\dimen140
+\@Q=\dimen141
+\@EM=\dimen142
+! Undefined control sequence.
+l.47 \edef\kenc@JYn{\cy@encoding
+                                }
+? 
+! Emergency stop.
+l.47 
+     
+End of file on the terminal!
+
+ 
+Here is how much of TeX's memory you used:
+ 39 strings out of 476182
+ 731 string characters out of 5795595
+ 1922975 words of memory out of 5000000
+ 22136 multiletter control sequences out of 15000+600000
+ 558069 words of font info for 36 fonts, out of 8000000 for 9000
+ 14 hyphenation exceptions out of 8191
+ 27i,0n,37p,127b,17s stack positions out of 10000i,1000n,20000p,200000b,200000s
+!  ==> Fatal error occurred, no output PDF file produced!
