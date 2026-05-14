@@ -53,24 +53,24 @@ LLM, LLM Agent, GCN, passenger demand, explanation generation
 \section{まえがき}
 都市鉄道の運用では，短期的な旅客需要予測に基づいてダイヤ調整や要員配置を行う。しかし，実運用においては予測値そのものだけでなく，「なぜ増えたのか」「なぜ減ったのか」という理由の把握が重要である。特に，降雨や高温といった外部要因と，隣接駅・乗換駅を介した需要変動の波及が重なる場合，数値予測のみから原因を即時に説明することは難しい。
 
-近年，交通系ICカード乗降データの蓄積により，駅単位・時間単位での高精細な需要観測が可能となった。これに伴い，RNN，LSTM，Transformer，時空間GNNなどを用いた需要予測研究が進展している。一方で，予測モデルが高精度化するほど内部構造が複雑となり，現場で理解可能な形で根拠を提示することは困難になりやすい。また，\LLM\ による説明生成が注目されているが，鉄道固有の駅間依存や当日の外部要因と整合した説明を常に生成できるとは限らない。
+近年，交通系ICカード乗降データの蓄積により，駅単位・時間単位での高精細な需要観測が可能となった。これに伴い，RNN，LSTM，Transformer，時空間GNNなどを用いた需要予測研究が進展している\cite{7508408,vaswani2017attention,10.5555/3304222.3304273}。一方で，予測モデルが高精度化するほど内部構造が複雑となり，現場で理解可能な形で根拠を提示することは困難になりやすい。また，\LLM\ による説明生成が注目されているが，鉄道固有の駅間依存や当日の外部要因と整合した説明を常に生成できるとは限らない\cite{guo2024towards}。
 
 そこで本研究では，気象要因と駅間依存を明示的な根拠として扱い，\GCN\ による需要推定と \LLM\ Agent による説明生成を統合した枠組みを提案する。
 
 \section{関連研究}
 本研究は，ICカード乗降データを対象に，気象要因と駅間依存を統合し，\GCN\ による需要推定と \LLM\ Agent による根拠付き説明生成を一体化する枠組みを提案する。このため関連研究は時系列予測モデル，時空間GNN，データ駆動型グラフ学習，外生要因統合，説明可能AIおよび \LLM\ の活用，の観点から整理する。
 
-まず，交通需要予測の基盤として，RNNやLSTMに代表される系列モデルが広く用いられてきた。LSTMは長期依存の学習困難を緩和する構造として知られており，時系列予測タスクにおける有効性が多く報告されている。さらに，Transformerは自己注意機構により系列内の長距離依存を並列的に扱う枠組みを確立し，時系列分析にも応用されている。しかし，鉄道需要のように観測点がネットワーク構造を持つ問題では，時間依存だけでなく，駅間の関係性を明示的に扱う必要がある。
+まず，交通需要予測の基盤として，RNNやLSTMに代表される系列モデルが広く用いられてきた。LSTMは長期依存の学習困難を緩和する構造として知られており\cite{7508408,sherstinsky2020fundamentals,yu2019review}，時系列予測タスクにおける有効性が多く報告されている。さらに，Transformerは自己注意機構により系列内の長距離依存を並列的に扱う枠組みを確立し\cite{vaswani2017attention}，時系列分析にも応用されている。しかし，鉄道需要のように観測点がネットワーク構造を持つ問題では，時間依存だけでなく，駅間の関係性を明示的に扱う必要がある。
 
-この課題に対し，交通分野では時空間GNNが主流となってきた。グラフ学習の基礎として，\GCN\ による半教師あり学習の枠組みや，局所化スペクトルフィルタリングによる効率的なグラフ畳み込みが提案されている。交通予測の代表例として，DCRNNは拡散畳み込みと系列モデルを組み合わせて交通流の方向性を表現し，STGCNは時空間畳み込みにより高い予測性能を示している。さらに，AST-GCNは属性情報を組み込み，外部情報を含む予測の有効性を示している。これらの研究は予測精度向上において重要であるが，出力結果を自然言語で説明することまでは直接扱っていない。
+この課題に対し，交通分野では時空間GNNが主流となってきた。グラフ学習の基礎として，\GCN\ による半教師あり学習の枠組み\cite{kipf2016semi}や，局所化スペクトルフィルタリングによる効率的なグラフ畳み込み\cite{defferrard2016convolutional}が提案されている。交通予測の代表例として，DCRNNは拡散畳み込みと系列モデルを組み合わせて交通流の方向性を表現し\cite{li2017diffusion}，STGCNは時空間畳み込みにより高い予測性能を示している\cite{10.5555/3304222.3304273}。さらに，AST-GCNは属性情報を組み込み\cite{9363197}，外部情報を含む予測の有効性を示している。これらの研究は予測精度向上において重要であるが，出力結果を自然言語で説明することまでは直接扱っていない。
 
-また，駅間依存を与えるグラフ構造についても課題がある。鉄道では，単純な地理隣接だけでは実際の利用関係を十分に表せない場合がある。例えば，乗換駅や都心ターミナル駅では，路線図上で離れた駅同士でも強い需要連動が生じうる。この問題に対し，Graph WaveNetやAGCRNでは，データ駆動型に適応的隣接行列を学習する手法が提案されている。これらは固定グラフに依存しない柔軟な依存関係学習を可能にするが，学習された関係が運用者にとって理解しやすい形で提示されるとは限らない。したがって，本研究では，説明可能性の観点からも共変動に基づく機能的フローネットワークを用い，その近傍情報を \LLM\ に渡す設計を採る。
+また，駅間依存を与えるグラフ構造についても課題がある。鉄道では，単純な地理隣接だけでは実際の利用関係を十分に表せない場合がある。例えば，乗換駅や都心ターミナル駅では，路線図上で離れた駅同士でも強い需要連動が生じうる。この問題に対し，Graph WaveNetやAGCRNでは，データ駆動型に適応的隣接行列を学習する手法が提案されている\cite{wu2019graph,bai2020adaptive}。これらは固定グラフに依存しない柔軟な依存関係学習を可能にするが，学習された関係が運用者にとって理解しやすい形で提示されるとは限らない。したがって，本研究では，説明可能性の観点からも共変動に基づく機能的フローネットワークを用い，その近傍情報を \LLM\ に渡す設計を採る。
 
-さらに，交通需要は外生要因の影響を強く受ける。特に降雨，気温，風などの気象条件は公共交通需要に系統的な影響を持つことが報告されている。イベントや祝日等の外部情報を加えることで予測精度を高める研究も存在するが，多くは予測値の改善を主目的としており，なぜその変動が起きたのかを説明するところまでは十分に議論されていない。現場運用では，予測値よりもむしろその背景要因が重要であるため，外生要因統合を説明生成へつなげる設計が必要である。
+さらに，交通需要は外生要因の影響を強く受ける。特に降雨，気温，風などの気象条件は公共交通需要に系統的な影響を持つことが報告されている\cite{zhou2017impacts}。イベントや祝日等の外部情報を加えることで予測精度を高める研究も存在するが，多くは予測値の改善を主目的としており，なぜその変動が起きたのかを説明するところまでは十分に議論されていない。現場運用では，予測値よりもむしろその背景要因が重要であるため，外生要因統合を説明生成へつなげる設計が必要である。
 
-説明可能性の観点では，注意機構やXAIの利用も議論されている。GATは近傍重みを学習できるため，どのノードが影響したかを示す手がかりになりうるが，注意重みをそのまま因果的根拠とみなすことには慎重さが求められる。また，深層学習モデルの挙動を可視化する手法も提案されているが，鉄道需要の実務で必要とされる「降雨による需要減」「近傍駅からの波及」といったドメイン単位の説明へ自然に落とし込むには限界がある。
+説明可能性の観点では，注意機構やXAIの利用も議論されている。GATは近傍重みを学習できるため\cite{velickovic2017graph}，どのノードが影響したかを示す手がかりになりうるが，注意重みをそのまま因果的根拠とみなすことには慎重さが求められる。また，深層学習モデルの挙動を可視化する手法\cite{monje2022deep}も提案されているが，鉄道需要の実務で必要とされる「降雨による需要減」「近傍駅からの波及」といったドメイン単位の説明へ自然に落とし込むには限界がある。
 
-近年は \LLM\ を用いた説明可能AIが注目されている。交通流予測に対して \LLM\ による言語説明を付与する研究も報告されており，数値予測を運用者に理解しやすい形へ変換する可能性が示されている。しかし，\LLM\ 単体では一般知識に基づく補完が混入しやすく，観測事実と不整合な説明が生じるリスクがある。このため，\LLM\ を交通需要説明に用いる際には，どの数値事実とどの構造情報を根拠として与えるかを設計する必要がある。
+近年は \LLM\ を用いた説明可能AIが注目されている。交通流予測に対して \LLM\ による言語説明を付与する研究も報告されており\cite{guo2024towards}，数値予測を運用者に理解しやすい形へ変換する可能性が示されている。しかし，\LLM\ 単体では一般知識に基づく補完が混入しやすく，観測事実と不整合な説明が生じるリスクがある。このため，\LLM\ を交通需要説明に用いる際には，どの数値事実とどの構造情報を根拠として与えるかを設計する必要がある。
 
 以上より，既存研究では，予測精度向上のための時空間GNN，柔軟な依存関係学習，外生要因統合，\LLM\ による説明生成が個別には進展しているものの，\GCN\ による需要推定結果，気象要因，近傍駅変動を統合し，それらを根拠として自然言語説明を生成し，さらにその妥当性を定量評価する枠組みは十分ではない。本研究はこのギャップを埋めることを目的とする。
 
@@ -266,90 +266,8 @@ Group & HitRate改善 & F1改善 & NeighborAcc改善 \\
 
 \ack
 本研究は、JSPS科研費（24K05080）および令和７年度大分大学研究力強化推進プロジェクト（BURST）、令和７年度大分大学理工学部研究支援経費の助成を受けたものです。
-\begin{thebibliography}{99}
-
-\bibitem{kamarianakis2005space}
-Y.~Kamarianakis and P.~Prastacos,
-``Space-time modeling of traffic flow,''
-\textit{Computers \& Geosciences}, vol.~31, no.~2, pp.~119--133, 2005.
-
-\bibitem{7508408}
-S.~Hochreiter and J.~Schmidhuber,
-``Long short-term memory,''
-\textit{Neural Computation}, vol.~9, no.~8, pp.~1735--1780, 1997.
-
-\bibitem{sherstinsky2020fundamentals}
-A.~Sherstinsky,
-``Fundamentals of recurrent neural network (RNN) and long short-term memory (LSTM) network,''
-\textit{Physica D}, vol.~404, 132306, 2020.
-
-\bibitem{yu2019review}
-Y.~Yu, X.~Si, C.~Hu, and J.~Zhang,
-``A review of recurrent neural networks: LSTM cells and network architectures,''
-\textit{Neural Computation}, vol.~31, no.~7, pp.~1235--1270, 2019.
-
-\bibitem{vaswani2017attention}
-A.~Vaswani, N.~Shazeer, N.~Parmar, J.~Uszkoreit, L.~Jones, A.~N. Gomez,
-{\L}.~Kaiser, and I.~Polosukhin,
-``Attention is all you need,''
-in \textit{Proc. NeurIPS}, pp.~5998--6008, 2017.
-
-\bibitem{kipf2016semi}
-T.~N. Kipf and M.~Welling,
-``Semi-supervised classification with graph convolutional networks,''
-\textit{arXiv preprint arXiv:1609.02907}, 2016.
-
-\bibitem{defferrard2016convolutional}
-M.~Defferrard, X.~Bresson, and P.~Vandergheynst,
-``Convolutional neural networks on graphs with fast localized spectral filtering,''
-in \textit{Proc. NeurIPS}, pp.~3844--3852, 2016.
-
-\bibitem{li2017diffusion}
-Y.~Li, R.~Yu, C.~Shahabi, and Y.~Liu,
-``Diffusion convolutional recurrent neural network: Data-driven traffic forecasting,''
-\textit{arXiv preprint arXiv:1707.01926}, 2017.
-
-\bibitem{10.5555/3304222.3304273}
-B.~Yu, H.~Yin, and Z.~Zhu,
-``Spatio-temporal graph convolutional networks: A deep learning framework for traffic forecasting,''
-in \textit{Proc. IJCAI}, pp.~3634--3640, 2018.
-
-\bibitem{9363197}
-J.~Guo, X.~Liu, and Y.~Chen,
-``AST-GCN: Attribute-augmented spatiotemporal graph convolutional network for traffic forecasting,''
-\textit{IEEE Access}, vol.~9, pp.~40327--40337, 2021.
-
-\bibitem{wu2019graph}
-Z.~Wu, S.~Pan, G.~Long, J.~Jiang, X.~Chang, and C.~Zhang,
-``Graph WaveNet for deep spatial-temporal graph modeling,''
-in \textit{Proc. IJCAI}, pp.~1907--1913, 2019.
-
-\bibitem{bai2020adaptive}
-L.~Bai, L.~Yao, C.~Li, X.~Wang, and C.~Wang,
-``Adaptive graph convolutional recurrent network for traffic forecasting,''
-in \textit{Proc. NeurIPS}, vol.~33, pp.~17804--17815, 2020.
-
-\bibitem{zhou2017impacts}
-M.~Zhou, X.~Wang, M.~Li, et al.,
-``Impacts of weather on public transport ridership: Results from mining data from different sources,''
-\textit{Transportation Research Part C}, vol.~75, pp.~17--29, 2017.
-
-\bibitem{velickovic2017graph}
-P.~Veli{\v{c}}kovi{\'c}, G.~Cucurull, A.~Casanova, A.~Romero, P.~Li{\`o}, and Y.~Bengio,
-``Graph attention networks,''
-\textit{arXiv preprint arXiv:1710.10903}, 2017.
-
-\bibitem{guo2024towards}
-S.~Guo, Y.~Chen, H.~Xu, et al.,
-``Towards explainable traffic flow prediction with large language models,''
-\textit{Communications in Transportation Research}, vol.~4, 100123, 2024.
-
-\bibitem{monje2022deep}
-P.~Monje, J.~A. Mena, and A.~G. Rivas,
-``Deep learning and explainable artificial intelligence for bus passenger demand prediction,''
-\textit{Applied Sciences}, vol.~12, no.~18, 2022.
-
-\end{thebibliography}
+\bibliographystyle{sieicej}
+\bibliography{reference}
 
 \appendix
 
